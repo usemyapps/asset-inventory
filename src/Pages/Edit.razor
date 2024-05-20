@@ -1,0 +1,123 @@
+@page "/edit/{id}"
+@inject AssetService AssetService
+@inject NavigationManager NavigationManager
+
+<h3>Edit Asset</h3>
+
+@if (asset == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <EditForm Model="asset" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        @* <ValidationSummary /> *@
+
+        <div>
+            <label>Type:</label>
+            <InputText @bind-Value="asset.Type" />
+            <ValidationMessage For="@(() => asset.Type)" />
+        </div>
+        <div>
+            <label>Serial Number:</label>
+            <InputText @bind-Value="asset.SerialNumber" />
+            <ValidationMessage For="@(() => asset.SerialNumber)" />
+        </div>
+        <div>
+            <label>Asset Tag:</label>
+            <InputText @bind-Value="asset.AssetTag" />
+            <ValidationMessage For="@(() => asset.AssetTag)" />
+        </div>
+        <div>
+            <label>Manufacturer:</label>
+            <InputText @bind-Value="asset.Manufacturer" />
+            <ValidationMessage For="@(() => asset.Manufacturer)" />
+        </div>
+        <div>
+            <label>Model:</label>
+            <InputText @bind-Value="asset.Model" />
+            <ValidationMessage For="@(() => asset.Model)" />
+        </div>
+        <div>
+            <label>Purchase Date:</label>
+            <InputDate @bind-Value="asset.PurchaseDate" />
+            <ValidationMessage For="@(() => asset.PurchaseDate)" />
+        </div>
+        <div>
+            <label>Location:</label>
+            <InputText @bind-Value="asset.Location" />
+            <ValidationMessage For="@(() => asset.Location)" />
+        </div>
+        <div>
+            <label>Notes:</label>
+            <InputTextArea @bind-Value="asset.Notes" />
+            <ValidationMessage For="@(() => asset.Notes)" />
+        </div>
+
+        @if (isArchived)
+        {
+            <div class="form-group">
+                <label>Archived:</label>
+                <InputCheckbox @bind-Value="asset.IsArchived" />
+            </div>
+        }
+        <button type="submit" class="btn btn-primary btn-sm mt-1">Save</button>
+        <button type="button" class="btn btn-secondary btn-sm mt-1" @onclick="GoBack">Cancel</button>
+    </EditForm>
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private Asset? asset;
+    private bool isArchived = false;
+    private string? errorMessage;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        asset = await AssetService.GetAssetByIdAsync(Id);
+        if (NavigationManager.ToAbsoluteUri(NavigationManager.Uri).Query.Contains("archived=true"))
+        {
+            isArchived = true;
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            await AssetService.UpdateAssetAsync(asset);
+            if (isArchived)
+            {
+                NavigationManager.NavigateTo("/archived-assets");
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/assets");
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+    private void GoBack()
+    {
+        if (isArchived)
+        {
+            NavigationManager.NavigateTo("/archived-assets");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/assets");
+        }
+    }
+}

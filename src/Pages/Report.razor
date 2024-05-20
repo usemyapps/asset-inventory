@@ -1,0 +1,73 @@
+@page "/report"
+@inject AssetService AssetService
+
+<h3>Replacement Report for the Next Four Quarters</h3>
+
+@if (quarterlyAssets != null)
+{
+    @foreach (var quarter in quarterlyAssets)
+    {
+        <h4>@quarter.Key</h4>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Serial Number</th>
+                    <th>Asset Tag</th>
+                    <th>Replace Date</th>
+                    <th>Location</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var asset in quarter.Value)
+                {
+                    <tr>
+                        <td>@asset.SerialNumber</td>
+                        <td>@asset.AssetTag</td>
+                        <td>@asset.ReplaceDate.ToShortDateString()</td>
+                        <td>@asset.Location</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+else
+{
+    <p><em>Loading...</em></p>
+}
+
+@code {
+    private Dictionary<string, List<Asset>> quarterlyAssets;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var assets = await AssetService.GetAssetsForNextFourQuartersAsync();
+        quarterlyAssets = GroupAssetsByQuarter(assets);
+    }
+
+    private Dictionary<string, List<Asset>> GroupAssetsByQuarter(List<Asset> assets)
+    {
+        var groupedAssets = new Dictionary<string, List<Asset>>();
+        var currentDate = DateTime.UtcNow;
+
+        foreach (var asset in assets)
+        {
+            var quarterKey = GetQuarterKey(asset.ReplaceDate, currentDate);
+            if (!groupedAssets.ContainsKey(quarterKey))
+            {
+                groupedAssets[quarterKey] = new List<Asset>();
+            }
+            groupedAssets[quarterKey].Add(asset);
+        }
+
+        return groupedAssets;
+    }
+
+    private string GetQuarterKey(DateTime date, DateTime currentDate)
+    {
+        var year = date.Year;
+        var quarter = ((date.Month - 1) / 3) + 1;
+
+        return $"Q{quarter} {year}";
+    }
+}

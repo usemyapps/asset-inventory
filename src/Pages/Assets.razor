@@ -1,0 +1,198 @@
+@page "/assets"
+@inject AssetService AssetService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<h3>Assets</h3>
+
+<button @onclick="CreateAsset" class="btn btn-primary btn-lg mb-3">Create New Asset</button>
+
+<div>
+    <input type="text" value="@searchTerm" @oninput="HandleSearchInput" placeholder="Search..." class="form-control" style="width: 200px; display: inline-block; margin-right: 10px;" />
+    
+    <select value="@selectedType" @onchange="HandleTypeChange" class="form-control" style="width: 200px; display: inline-block; margin-right: 10px;">
+        <option value="">All Types</option>
+        @foreach (var type in distinctTypes)
+        {
+            <option value="@type">@type</option>
+        }
+    </select>
+
+    <select value="@selectedManufacturer" @onchange="HandleManufacturerChange" class="form-control" style="width: 200px; display: inline-block; margin-right: 10px;">
+        <option value="">All Manufacturers</option>
+        @foreach (var manufacturer in distinctManufacturers)
+        {
+            <option value="@manufacturer">@manufacturer</option>
+        }
+    </select>
+
+    <select value="@selectedModel" @onchange="HandleModelChange" class="form-control" style="width: 200px; display: inline-block; margin-right: 10px;">
+        <option value="">All Models</option>
+        @foreach (var model in distinctModels)
+        {
+            <option value="@model">@model</option>
+        }
+    </select>
+
+    <select value="@selectedLocation" @onchange="HandleLocationChange" class="form-control" style="width: 200px; display: inline-block;">
+        <option value="">All Locations</option>
+        @foreach (var location in distinctLocations)
+        {
+            <option value="@location">@location</option>
+        }
+    </select>
+</div>
+
+<table class="table" id="assetsTable">
+   <thead>
+        <tr>
+            <th @onclick="() => SortTable(0)">Id</th>
+            <th @onclick="() => SortTable(1)">Type</th>
+            <th @onclick="() => SortTable(2)">S/N</th>
+            <th @onclick="() => SortTable(3)">Asset Tag</th>
+            <th @onclick="() => SortTable(4)">Manufacturer</th>
+            <th @onclick="() => SortTable(5)">Model</th>
+            <th @onclick="() => SortTable(6)">Purchase Date</th>
+            <th @onclick="() => SortTable(7)">Replace Date</th>
+            <th @onclick="() => SortTable(8)">Location</th>
+            <th>Notes</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var asset in filteredAssets)
+        {
+            if (!asset.IsArchived)
+            {
+                <tr>
+                    <td>@asset.Id</td>
+                    <td>@asset.Type</td>
+                    <td>@asset.SerialNumber</td>
+                    <td>@asset.AssetTag</td>
+                    <td>@asset.Manufacturer</td>
+                    <td>@asset.Model</td>
+                    <td>@asset.PurchaseDate.ToShortDateString()</td>
+                    <td>@asset.ReplaceDate.ToShortDateString()</td>
+                    <td>@asset.Location</td>
+                    <td>@asset.Notes</td>
+                    <td>
+                        <button @onclick="() => ViewAsset(asset.Id)" class="btn btn-info btn-sm mb-1">View</button>
+                        <button @onclick="() => EditAsset(asset.Id)" class="btn btn-warning btn-sm mb-1">Edit</button>
+                        <button @onclick="() => ConfirmArchive(asset.Id)" class="btn btn-danger btn-sm mb-1">Archive</button>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<Asset> assets = new List<Asset>();
+    private List<Asset> filteredAssets = new List<Asset>();
+    private string searchTerm = string.Empty;
+    private string selectedType = string.Empty;
+    private string selectedManufacturer = string.Empty;
+    private string selectedModel = string.Empty;
+    private string selectedLocation = string.Empty;
+
+    private List<string> distinctTypes = new List<string>();
+    private List<string> distinctManufacturers = new List<string>();
+    private List<string> distinctModels = new List<string>();
+    private List<string> distinctLocations = new List<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        assets = await AssetService.GetAssetsAsync();
+        filteredAssets = assets.Where(a => !a.IsArchived).ToList();
+
+        distinctTypes = assets.Select(a => a.Type).Distinct().ToList();
+        distinctManufacturers = assets.Select(a => a.Manufacturer).Distinct().ToList();
+        distinctModels = assets.Select(a => a.Model).Distinct().ToList();
+        distinctLocations = assets.Select(a => a.Location).Distinct().ToList();
+    }
+
+    private void CreateAsset()
+    {
+        NavigationManager.NavigateTo("/create");
+    }
+
+    private void ViewAsset(string id)
+    {
+        NavigationManager.NavigateTo($"/view/{id}");
+    }
+
+    private void EditAsset(string id)
+    {
+        NavigationManager.NavigateTo($"/edit/{id}");
+    }
+
+    private async Task ConfirmArchive(string id)
+    {
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to archive asset {id}?");
+        if (confirmed)
+        {
+            await ArchiveAsset(id);
+            NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+        }
+    }
+    private async Task ArchiveAsset(string id)
+    {
+        await AssetService.ArchiveAssetAsync(id);
+        assets = await AssetService.GetAssetsAsync();
+        ApplyFilters();
+    }
+
+    private void HandleSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value.ToString();
+        ApplyFilters();
+    }
+
+    private void HandleTypeChange(ChangeEventArgs e)
+    {
+        selectedType = e.Value.ToString();
+        ApplyFilters();
+    }
+
+    private void HandleManufacturerChange(ChangeEventArgs e)
+    {
+        selectedManufacturer = e.Value.ToString();
+        ApplyFilters();
+    }
+
+    private void HandleModelChange(ChangeEventArgs e)
+    {
+        selectedModel = e.Value.ToString();
+        ApplyFilters();
+    }
+
+    private void HandleLocationChange(ChangeEventArgs e)
+    {
+        selectedLocation = e.Value.ToString();
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        filteredAssets = assets
+            .Where(a => !a.IsArchived)
+            .Where(a => (string.IsNullOrEmpty(searchTerm) || a.Id.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                         a.Type.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                         a.SerialNumber.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                         a.AssetTag.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                         a.Manufacturer.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                         a.Model.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                         a.Location.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                         (a.Notes != null && a.Notes.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))) &&
+                        (string.IsNullOrEmpty(selectedType) || a.Type == selectedType) &&
+                        (string.IsNullOrEmpty(selectedManufacturer) || a.Manufacturer == selectedManufacturer) &&
+                        (string.IsNullOrEmpty(selectedModel) || a.Model == selectedModel) &&
+                        (string.IsNullOrEmpty(selectedLocation) || a.Location == selectedLocation))
+            .ToList();
+    }
+
+    private async Task SortTable(int columnIndex)
+    {
+        await JSRuntime.InvokeVoidAsync("sortTable", columnIndex);
+    }
+}

@@ -1,0 +1,83 @@
+@page "/create"
+@inject AssetService AssetService
+@inject NavigationManager NavigationManager
+
+<h3>Create New Asset</h3>
+
+<EditForm Model="newAsset" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    @* <ValidationSummary /> *@
+
+    <div>
+        <label>Type:</label>
+        <InputText @bind-Value="newAsset.Type" />
+        <ValidationMessage For="@(() => newAsset.Type)" />
+    </div>
+    <div>
+        <label>Serial Number:</label>
+        <InputText @bind-Value="newAsset.SerialNumber" />
+        <ValidationMessage For="@(() => newAsset.SerialNumber)" />
+    </div>
+    <div>
+        <label>Asset Tag:</label>
+        <InputText @bind-Value="newAsset.AssetTag" />
+        <ValidationMessage For="@(() => newAsset.AssetTag)" />
+    </div>
+    <div>
+        <label>Manufacturer:</label>
+        <InputText @bind-Value="newAsset.Manufacturer" />
+        <ValidationMessage For="@(() => newAsset.Manufacturer)" />
+    </div>
+    <div>
+        <label>Model:</label>
+        <InputText @bind-Value="newAsset.Model" />
+        <ValidationMessage For="@(() => newAsset.Model)" />
+    </div>
+    <div>
+        <label>Purchase Date:</label>
+        <InputDate @bind-Value="newAsset.PurchaseDate" />
+        <ValidationMessage For="@(() => newAsset.PurchaseDate)" />
+    </div>
+    <div>
+        <label>Location:</label>
+        <InputText @bind-Value="newAsset.Location" />
+        <ValidationMessage For="@(() => newAsset.Location)" />
+    </div>
+    <div>
+        <label>Notes:</label>
+        <InputTextArea @bind-Value="newAsset.Notes" />
+        <ValidationMessage For="@(() => newAsset.Notes)" />
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm mt-1">Create</button>
+    <button type="button" class="btn btn-secondary btn-sm mt-1" @onclick="GoBack">Cancel</button>
+
+</EditForm>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+@code {
+    private Asset newAsset = new Asset();
+    private string? errorMessage;
+
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            newAsset.Id = Guid.NewGuid().ToString("N").Substring(0, 18); // Generate a new Id
+            await AssetService.CreateAssetAsync(newAsset);
+            NavigationManager.NavigateTo("/assets");
+        }
+        catch (InvalidOperationException ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/assets");
+    }
+}

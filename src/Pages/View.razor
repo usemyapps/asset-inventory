@@ -1,0 +1,89 @@
+@page "/view/{id}"
+@inject AssetService AssetService
+@inject NavigationManager NavigationManager
+
+<h3>View Asset</h3>
+
+@if (asset == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div>
+        <label style="font-weight: bold;">Type:</label>
+        <p>@asset.Type</p>
+    </div>
+    <div>
+        <label style="font-weight: bold;">Serial Number:</label>
+        <p>@asset.SerialNumber</p>
+    </div>
+    <div>
+        <label style="font-weight: bold;">Asset Tag:</label>
+        <p>@asset.AssetTag</p>
+    </div>
+    <div>
+        <label style="font-weight: bold;">Manufacturer:</label>
+        <p>@asset.Manufacturer</p>
+    </div>
+    <div>
+        <label style="font-weight: bold;">Model:</label>
+        <p>@asset.Model</p>
+    </div>
+    <div>
+        <label style="font-weight: bold;">Purchase Date:</label>
+        <p>@asset.PurchaseDate.ToShortDateString()</p>
+    </div>
+    <div>
+        <label style="font-weight: bold;">Location:</label>
+        <p>@asset.Location</p>
+    </div>
+    <div>
+        <label style="font-weight: bold;">Location History:</label>
+        <ul>
+            @foreach (var change in asset.LocationHistory)
+            {
+                <li>
+                    @change.PreviousLocation - @change.ChangeTimestamp.ToString("g")
+                </li>
+            }
+        </ul>
+    </div>
+    <div>
+        <label style="font-weight: bold;">Notes:</label>
+        <p>@asset.Notes</p>
+    </div>
+    <div>
+        <label style="font-weight: bold;">Replace Date:</label>
+        <p>@asset.ReplaceDate.ToShortDateString()</p>
+    </div>
+    <button @onclick="BackToList">Back to List</button>
+}
+
+@code {
+    [Parameter]
+    public string Id { get; set; }
+
+    private Asset asset;
+    private bool isArchived = false;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        asset = await AssetService.GetAssetByIdAsync(Id);
+        if (NavigationManager.ToAbsoluteUri(NavigationManager.Uri).Query.Contains("archived=true"))
+        {
+            isArchived = true;
+        }
+    }
+    private void BackToList()
+    {
+        if (isArchived)
+        {
+            NavigationManager.NavigateTo("/archived-assets");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/assets");
+        }    }
+}

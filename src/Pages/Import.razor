@@ -1,0 +1,80 @@
+@page "/import"
+@inject AssetService AssetService
+@inject NavigationManager NavigationManager
+
+<h3>Import Assets</h3>
+
+<InputFile OnChange="HandleFileSelected" />
+<button @onclick="DownloadSampleCsv" class="btn btn-primary">Download Sample CSV</button>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success">@successMessage</div>
+}
+
+@code {
+    private string? errorMessage;
+    private string? successMessage;
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            using var reader = new StreamReader(file.OpenReadStream());
+
+            var csvData = await reader.ReadToEndAsync();
+            await ImportAssetsFromCsv(csvData);
+
+            successMessage = "Assets imported successfully.";
+            errorMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            successMessage = string.Empty;
+        }
+    }
+
+    private async Task ImportAssetsFromCsv(string csvData)
+    {
+        using var csvReader = new StringReader(csvData);
+        using var csv = new CsvReader(csvReader, CultureInfo.InvariantCulture);
+
+        var records = csv.GetRecords<AssetCsvModel>().ToList();
+        foreach (var record in records)
+        {
+            var asset = new Asset
+            {
+                Id = Guid.NewGuid().ToString(),
+                Type = record.Type,
+                SerialNumber = record.SerialNumber,
+                AssetTag = record.AssetTag,
+                Manufacturer = record.Manufacturer,
+                Model = record.Model,
+                PurchaseDate = record.PurchaseDate,
+                Location = record.Location,
+                Notes = record.Notes,
+                IsArchived = record.IsArchived
+            };
+
+            await AssetService.CreateAssetAsync(asset);
+        }
+    }
+
+    private void DownloadSampleCsv()
+    {
+        var sampleCsvContent = "Type,SerialNumber,AssetTag,Manufacturer,Model,PurchaseDate,Location,Notes,IsArchived\n" +
+                               "Laptop,LKJH132,AT12345,Dell,Latitude 5550,2023-01-01,John Smith,Example Note,false\n" +
+                               "Desktop,POIU321,v-000000,Lenovo,ThinkPad E585,2022-02-03,Inventory,,true";
+        var sampleCsvBytes = System.Text.Encoding.UTF8.GetBytes(sampleCsvContent);
+        var sampleCsvBase64 = Convert.ToBase64String(sampleCsvBytes);
+
+        NavigationManager.NavigateTo($"data:text/csv;base64,{sampleCsvBase64}", true);
+    }
+}
